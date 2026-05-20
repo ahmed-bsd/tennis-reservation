@@ -1,0 +1,46 @@
+# ── Secrets ──────────────────────────────────
+.env
+k8s/secrets.yaml
+
+# ── Architecture generator (not needed in repo) ──
+architecture.py
+
+# ── Backend ──────────────────────────────────
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+*.war
+
+# ── Frontend ─────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Database ─────────────────────────────────
+*.sql.bak
+
+# ── Docker ───────────────────────────────────
+.docker/
+
+# ── IDE ──────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────
+*.log
+logs/
+
+# ── Python (venv / diagram generator) ────────
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
