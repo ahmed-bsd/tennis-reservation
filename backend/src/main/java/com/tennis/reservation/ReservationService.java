@@ -5,8 +5,13 @@ import com.tennis.court.CourtRepository;
 import com.tennis.jeton.JetonAccount;
 import com.tennis.jeton.JetonRepository;
 import com.tennis.notification.NotificationService;
+import com.tennis.pricing.DiscountProposal;
+import com.tennis.pricing.DiscountProposalRepository;
+import com.tennis.pricing.PricingCalculator;
+import com.tennis.pricing.ProposalStatus;
 import com.tennis.user.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationService {
@@ -24,6 +30,7 @@ public class ReservationService {
     private final CourtRepository courtRepository;
     private final JetonRepository jetonRepository;
     private final NotificationService notificationService;
+    private final DiscountProposalRepository discountProposalRepository;
 
     @Value("${app.booking.max-days-ahead}") private int maxDaysAhead;
     @Value("${app.booking.opening-hour}")   private int openingHour;
@@ -52,17 +59,25 @@ public class ReservationService {
             throw new IllegalStateException("Court already booked for this slot");
         }
 
-        int cost = computeCost(start, request.getDurationMinutes());
+        //recalculate the price before booking;
+        PricingCalculator calculator = new PricingCalculator(5.0, 10.0, LocalTime.of(19, 0));
+        List<DiscountProposal> proposals =
+                discountProposalRepository.findByStatusOrderByCreatedAtDesc(ProposalStatus.APPROVED);
+
+        double finalPrice = calculator.calculateFinalPrice(request.getStartTime(), proposals);
+        log.info("final price"+ finalPrice);
+
+/*
         JetonAccount account = jetonRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalStateException("Jeton account not found"));
 
-        if (account.getBalance() < cost) {
+        if (account.getBalance() < finalPrice) {
             throw new IllegalStateException("Insufficient jeton balance");
         }
 
-        account.setBalance(account.getBalance() - cost);
+        account.setBalance(account.getBalance() - finalPrice);
         jetonRepository.save(account);
-
+*/
         Reservation reservation = Reservation.builder()
                 .user(user)
                 .court(court)
@@ -70,8 +85,8 @@ public class ReservationService {
                 .startTime(start)
                 .endTime(end)
                 .durationMinutes(request.getDurationMinutes())
-                .jetonCost(cost)
                 .status(ReservationStatus.PENDING)
+                .jetonCost(finalPrice)
                 .build();
 
         reservation = reservationRepository.save(reservation);

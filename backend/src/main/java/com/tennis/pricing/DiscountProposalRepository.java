@@ -6,4 +6,5 @@ import java.util.List;
 public interface DiscountProposalRepository extends JpaRepository<DiscountProposal, Long> {
     List<DiscountProposal> findByStatusOrderByCreatedAtDesc(ProposalStatus status);
     List<DiscountProposal> findAllByOrderByCreatedAtDesc();
+
 }

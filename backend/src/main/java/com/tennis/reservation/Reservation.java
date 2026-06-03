@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.math.BigDecimal;
+
 
 @Entity
 @Table(name = "reservations")
@@ -36,7 +38,7 @@ public class Reservation {
     private int durationMinutes;
 
     @Column(nullable = false)
-    private int jetonCost;
+    private double jetonCost;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

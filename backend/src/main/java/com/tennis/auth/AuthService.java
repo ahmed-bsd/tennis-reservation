@@ -41,7 +41,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        jetonRepository.save(JetonAccount.builder().user(user).balance(0).build());
+        jetonRepository.save(JetonAccount.builder().user(user).balance(0.0).build());
 
         return buildResponse(user);
     }

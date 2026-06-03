@@ -30,10 +30,10 @@ public class DiscountProposal {
     private LocalTime endTime;
 
     @Column(nullable = false)
-    private int originalPrice;
+    private double originalPrice;
 
     @Column(nullable = false)
-    private int discountedPrice;
+    private double discountedPrice;
 
     private String reason;
 

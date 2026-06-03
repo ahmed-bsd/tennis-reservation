@@ -5,7 +5,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/pricing")
@@ -13,6 +15,22 @@ import java.util.List;
 public class PricingController {
 
     private final PricingService pricingService;
+
+    @PostMapping("/generate")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String> generate(
+            @RequestParam(required = false) String date
+    ) {
+
+        LocalDate targetDate = (date != null)
+                ? LocalDate.parse(date)
+                : LocalDate.now().plusDays(1);
+
+        pricingService.generateDiscountProposals();
+
+        return ResponseEntity.ok("✅ Pricing generated for " + targetDate);
+    }
+
 
     @GetMapping("/proposals")
     @PreAuthorize("hasAnyRole('MANAGER','ADMIN')")

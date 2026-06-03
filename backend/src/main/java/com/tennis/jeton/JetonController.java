@@ -18,10 +18,10 @@ public class JetonController {
 
     @GetMapping("/balance")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Integer>> getBalance(@AuthenticationPrincipal User user) {
-        int balance = jetonRepository.findByUser(user)
+    public ResponseEntity<Map<String, Double>> getBalance(@AuthenticationPrincipal User user) {
+        double balance = jetonRepository.findByUser(user)
                 .map(JetonAccount::getBalance)
-                .orElse(0);
+                .orElse( 0.0);
         return ResponseEntity.ok(Map.of("balance", balance));
     }
 
@@ -29,7 +29,7 @@ public class JetonController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Void> topup(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
-        int amount = Integer.parseInt(body.get("amount").toString());
+        double amount = Double.parseDouble(body.get("amount").toString());
 
         jetonRepository.findAll().stream()
                 .filter(a -> a.getUser().getId().equals(userId))

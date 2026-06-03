@@ -33,35 +33,25 @@ public class PricingService {
     @Value("${app.ollama.url}")
     private String ollamaUrl;
 
-    @Value("${app.ollama.model}")
-    private String model;
+
+    @Value("${app.groq.api-key}")
+    private String groqApiKey;
 
     private final ObjectMapper mapper = new ObjectMapper();
-
-    // =========================================================
-    // SCHEDULER
-    // =========================================================
-    @Scheduled(cron = "0 * * * * *")
+    private double basePrice;
+    @Transactional
     public void generateDiscountProposals() {
 
         LocalDate targetDate = LocalDate.now().plusDays(1);
-
         log.info("🚀 AI Pricing engine started for {}", targetDate);
 
-        // =========================================================
-        // 1. CONTEXT (WEATHER + CALENDAR)
-        // =========================================================
         String weather = weatherService.getCurrentWeather("Tunis");
+        log.info("weather:::",weather);
         boolean isWeekend = isWeekend(targetDate);
-        boolean isHoliday = false; // TODO: Tunisia holiday API
-
-        log.info("🌤 Weather: {}", weather);
+        boolean isHoliday = false;
 
         List<Court> courts = courtRepository.findByActiveTrue();
 
-        // =========================================================
-        // 2. BUILD STRUCTURED DATA
-        // =========================================================
         List<Map<String, Object>> slots = new ArrayList<>();
 
         for (Court court : courts) {
@@ -71,156 +61,135 @@ public class PricingService {
 
                 long bookings = reservationRepository.countByDateAndStartTime(targetDate, time);
 
-                double occupancy = Math.min(1.0, bookings / 5.0); // simple normalization
-
                 Map<String, Object> slot = new HashMap<>();
                 slot.put("courtId", court.getId());
-                slot.put("courtNumber", court.getNumber());
                 slot.put("hour", hour);
                 slot.put("bookings", bookings);
-                slot.put("occupancy", occupancy);
 
                 slots.add(slot);
             }
         }
 
-        // =========================================================
-        // 3. PROMPT LLaMA 3
-        // =========================================================
-        String prompt =
-                """
-                You are a STRICT JSON GENERATION ENGINE.
-                
-                CRITICAL RULES (NON-NEGOTIABLE):
-                - You MUST output ONLY valid JSON
-                - You MUST NOT write explanations
-                - You MUST NOT include markdown (no ``` or text)
-                - You MUST NOT include any extra keys outside schema
-                - You MUST NOT wrap response in objects like {response: ...}
-                - Output must start with [ and end with ]
-                
-                SCHEMA REQUIRED:
-                [
-                  {
-                    "courtId": number,
-                    "hour": number,
-                    "discountPercent": number,
-                    "reason": string
-                  }
-                ]
-                
-                VALIDATION RULES:
-                - discountPercent must be between 10 and 30
-                - DO NOT generate discounts for hours >= 17
-                - Only include realistic demand-based suggestions
-                
-                INPUT DATA:
-                %s
-                
-                WEATHER:
-                %s
-                
-                CONTEXT:
-                date=%s
-                weekend=%s
-                holiday=%s
-                
-                FINAL INSTRUCTION:
-                Return ONLY the JSON array now.
-                """.formatted(slots, weather, targetDate, isWeekend, isHoliday);
-        // =========================================================
-        // 4. CALL OLLAMA (LLaMA 3)
-        // =========================================================
-        Map<String, Object> request = Map.of(
-                "model", model,
-                "stream", false,
-                "format", "json",
-                "messages", List.of(
-                        Map.of(
-                                "role", "system",
-                                "content", "Return ONLY a JSON ARRAY, not an object or a text."
-                        ),
-                        Map.of(
-                                "role", "user",
-                                "content", prompt
-                        )
+        String prompt = """
+You are a strict JSON generator.
+
+Return ONLY a valid JSON array.
+
+FORMAT:
+[
+  {
+    "courtId": number,
+    "hour": number,
+    "discountPercent": number,
+    "reason": string
+  }
+]
+
+RULES:
+- discountPercent between 10 and 30
+- NO discount if hour >= 17
+- NO explanations
+- NO markdown
+- ONLY JSON
+
+INPUT DATA:
+%s
+
+WEATHER: %s
+WEEKEND: %s
+HOLIDAY: %s
+""".formatted(slots, weather, isWeekend, isHoliday);
+
+        // ✅ GROQ REQUEST (CORRECT FORMAT)
+        Map<String, Object> request = new HashMap<>();
+        request.put("model", "llama-3.3-70b-versatile");
+
+        request.put("messages", List.of(
+                Map.of(
+                        "role", "system",
+                        "content", "You are a strict JSON API. Output only JSON array."
+                ),
+                Map.of(
+                        "role", "user",
+                        "content", prompt
                 )
-        );
+        ));
+
+        request.put("temperature", 0.2);
+        request.put("max_tokens", 2000);
 
         Map response = webClientBuilder.build()
                 .post()
-                .uri(ollamaUrl + "/api/chat")
+                .uri("https://api.groq.com/openai/v1/chat/completions")
+                .header("Authorization", "Bearer " + groqApiKey)
+                .header("Content-Type", "application/json")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
 
-        if (response == null || response.get("message") == null) {
-            log.error("❌ Empty response from LLM");
+        if (response == null) {
+            log.error("❌ Empty Groq response");
             return;
         }
 
-        String content = (String) ((Map<String, Object>) response.get("message")).get("content");
+        List<Map<String, Object>> choices =
+                (List<Map<String, Object>>) response.get("choices");
 
-        log.info("🤖 LLaMA OUTPUT:\n{}", content);
+        Map<String, Object> firstChoice = choices.get(0);
 
-        // =========================================================
-        // 5. PARSE JSON SAFE
-        // =========================================================
+        Map<String, Object> message =
+                (Map<String, Object>) firstChoice.get("message");
+
+        String content = (String) message.get("content");
+
+        log.info("AI RESPONSE => {}", content);
+
+        // ✅ CLEAN JSON (important)
+        content = content
+                .replaceAll("```json", "")
+                .replaceAll("```", "")
+                .trim();
+
+        ObjectMapper mapper = new ObjectMapper();
+
         List<Map<String, Object>> results;
-
         try {
-            results = mapper.readValue(content, new TypeReference<List<Map<String, Object>>>() {});
+            results = mapper.readValue(content, new TypeReference<>() {});
         } catch (Exception e) {
-            log.error("❌ JSON parsing failed. Raw output:\n{}", content);
+            log.error("❌ JSON parse error:\n{}", content);
             return;
         }
 
-        // =========================================================
-        // 6. APPLY RULE ENGINE + SAVE
-        // =========================================================
         for (Map<String, Object> r : results) {
 
-            try {
-                int courtId = (Integer) r.get("courtId");
-                int hour = (Integer) r.get("hour");
-                int discount = (Integer) r.get("discountPercent");
+            Long courtId = Long.valueOf(r.get("courtId").toString());
+            int hour = Integer.parseInt(r.get("hour").toString());
+            int discount = Integer.parseInt(r.get("discountPercent").toString());
+            double basePrice = hour<=19 ? 5 : 10;
 
-                // 🚫 RULE ENGINE (HARD SAFETY)
-                if (hour >= 17 && hour <= 21) continue;
+            if (hour >= 17) continue;
 
-                discount = Math.max(10, Math.min(30, discount));
+            Court court = courtRepository.findById(courtId).orElse(null);
+            if (court == null) continue;
 
-                LocalTime start = LocalTime.of(hour, 0);
+            DiscountProposal proposal = DiscountProposal.builder()
+                    .court(court)
+                    .date(targetDate)
+                    .startTime(LocalTime.of(hour, 0))
+                    .endTime(LocalTime.of(hour + 1, 0))
+                    .originalPrice(basePrice)
+                    .discountedPrice(basePrice - (basePrice * discount / 100))
+                    .reason((String) r.getOrDefault("reason", "AI generated"))
+                    .status(ProposalStatus.PENDING)
+                    .createdAt(LocalDateTime.now())
+                    .build();
 
-                int basePrice = start.isBefore(LocalTime.NOON) ? 10 : 20;
-                int finalPrice = basePrice - (basePrice * discount / 100);
-
-                Court court = courtRepository.findById((long) courtId).orElse(null);
-                if (court == null) continue;
-
-                DiscountProposal proposal = DiscountProposal.builder()
-                        .court(court)
-                        .date(targetDate)
-                        .startTime(start)
-                        .endTime(start.plusHours(1))
-                        .originalPrice(basePrice)
-                        .discountedPrice(finalPrice)
-                        .reason((String) r.getOrDefault("reason", "AI generated"))
-                        .status(ProposalStatus.PENDING)
-                        .createdAt(LocalDateTime.now())
-                        .build();
-
-                proposalRepository.save(proposal);
-
-            } catch (Exception ex) {
-                log.warn("⚠ Skipping invalid proposal: {}", r);
-            }
+            proposalRepository.save(proposal);
         }
 
-        log.info("✅ Discount generation completed");
+        log.info("✅ Proposals generated successfully");
     }
-
     // =========================================================
     // UTIL
     // =========================================================
@@ -242,7 +211,7 @@ public class PricingService {
         proposalRepository.save(p);
 
         notificationService.broadcastDiscountActivated(
-                "Discount Court %d %s %s -> %d jetons"
+                "Discount Court %d %s %s -> %f jetons"
                         .formatted(
                                 p.getCourt().getNumber(),
                                 p.getDate(),

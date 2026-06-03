@@ -34,14 +34,17 @@ app:
     url: http://localhost:11434/
     model: llama3
 
+  groq:
+    api-key: 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
+
   booking:
     max-days-ahead: 2
     opening-hour: 8
     closing-hour: 22
-    lighting-start: "17:00"
-    lighting-end: "19:30"
-    price-morning: 10
-    price-evening: 20
+    lighting-start: "20"
+    lighting-end: "22"
+    price-morning: 5
+    price-evening: 10
 
 
 springdoc:
