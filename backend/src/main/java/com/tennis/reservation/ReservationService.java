@@ -35,8 +35,8 @@ public class ReservationService {
     @Value("${app.booking.max-days-ahead}") private int maxDaysAhead;
     @Value("${app.booking.opening-hour}")   private int openingHour;
     @Value("${app.booking.closing-hour}")   private int closingHour;
-    @Value("${app.booking.price-morning}")  private int priceMorning;
-    @Value("${app.booking.price-evening}")  private int priceEvening;
+    @Value("${app.booking.price-morning}")  private double priceMorning;
+    @Value("${app.booking.price-evening}")  private double priceEvening;
 
     @Transactional
     public Reservation create(User user, ReservationRequest request) {
@@ -64,10 +64,10 @@ public class ReservationService {
         List<DiscountProposal> proposals =
                 discountProposalRepository.findByStatusOrderByCreatedAtDesc(ProposalStatus.APPROVED);
 
-        double finalPrice = calculator.calculateFinalPrice(request.getStartTime(), proposals);
-        log.info("final price"+ finalPrice);
+        Double finalPrice = calculator.calculateFinalPrice(request.getStartTime(), proposals);
 
-/*
+
+
         JetonAccount account = jetonRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalStateException("Jeton account not found"));
 
@@ -77,7 +77,18 @@ public class ReservationService {
 
         account.setBalance(account.getBalance() - finalPrice);
         jetonRepository.save(account);
-*/
+
+        log.info("=== CREATE RESERVATION DEBUG ===");
+        log.info("userId={}", user.getId());
+        log.info("courtId={}", court.getId());
+        log.info("date={}", request.getDate());
+        log.info("startTime={}", start);
+        log.info("endTime={}", end);
+        log.info("durationMinutes={}", request.getDurationMinutes());
+        log.info("type finalPrice={}", finalPrice);
+        log.info("finalPrice type={}", ((Object) finalPrice).getClass().getName());
+
+        log.info("=================================");
         Reservation reservation = Reservation.builder()
                 .user(user)
                 .court(court)
@@ -88,9 +99,8 @@ public class ReservationService {
                 .status(ReservationStatus.PENDING)
                 .jetonCost(finalPrice)
                 .build();
-
         reservation = reservationRepository.save(reservation);
-        notificationService.sendBookingConfirmation(user, reservation);
+        //notificationService.sendBookingConfirmation(user, reservation);
         return reservation;
     }
 
@@ -108,7 +118,9 @@ public class ReservationService {
 
         if (freeCancel) {
             JetonAccount account = jetonRepository.findByUser(user).orElseThrow();
-            account.setBalance(account.getBalance() + reservation.getJetonCost());
+            double balance= account.getBalance()+reservation.getJetonCost();
+            log.info("balance after refund :"+balance);
+            account.setBalance(balance);
             jetonRepository.save(account);
         }
 
@@ -132,8 +144,8 @@ public class ReservationService {
         return reservationRepository.save(reservation);
     }
 
-    private int computeCost(LocalTime start, int durationMinutes) {
-        int basePrice = start.isBefore(LocalTime.NOON) ? priceMorning : priceEvening;
+    private double computeCost(LocalTime start, int durationMinutes) {
+        double basePrice = start.isBefore(LocalTime.NOON) ? priceMorning : priceEvening;
         return basePrice * (durationMinutes / 30);
     }
 }

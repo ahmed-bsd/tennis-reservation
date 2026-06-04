@@ -38,7 +38,7 @@ public class Reservation {
     private int durationMinutes;
 
     @Column(nullable = false)
-    private double jetonCost;
+    private Double jetonCost;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

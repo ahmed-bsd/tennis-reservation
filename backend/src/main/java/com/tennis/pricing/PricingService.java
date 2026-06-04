@@ -17,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -45,8 +46,17 @@ public class PricingService {
         LocalDate targetDate = LocalDate.now().plusDays(1);
         log.info("🚀 AI Pricing engine started for {}", targetDate);
 
-        String weather = weatherService.getCurrentWeather("Tunis");
-        log.info("weather:::",weather);
+        //String weather = weatherService.getCurrentWeather("Tunis");
+        //log.info("weather:::",weather);
+        Map<String, Map<String, Object>> weather =
+                weatherService.getHourlyWeather(36.8, 10.2);
+
+        String weatherForPrompt = weather.entrySet().stream()
+                .map(e -> e.getKey() + " => " + e.getValue())
+                .collect(Collectors.joining("\n"));
+        log.info("weather : : "+weatherForPrompt);
+
+
         boolean isWeekend = isWeekend(targetDate);
         boolean isHoliday = false;
 
@@ -71,7 +81,7 @@ public class PricingService {
         }
 
         String prompt = """
-You are a strict JSON generator.
+You are a strict JSON generator for dynamic tennis court pricing.
 
 Return ONLY a valid JSON array.
 
@@ -86,19 +96,52 @@ FORMAT:
 ]
 
 RULES:
-- discountPercent between 10 and 30
+- discountPercent must be between 10 and 30
 - NO discount if hour >= 17
-- NO explanations
-- NO markdown
-- ONLY JSON
+- ONLY output JSON, no explanation, no markdown
+
+WEATHER-BASED PRICING RULES (VERY IMPORTANT):
+
+You MUST adjust discountPercent based on weather severity:
+
+1. RAIN / PRECIPITATION:
+- 0–20% rain probability → no or minimal discount (0–10%)
+- 20–50% → light discount (10–15%)
+- 50–70% → medium discount (15–25%)
+- 70–100% → high discount (25–30%)
+
+2. WIND:
+- 0–15 km/h → no impact
+- 15–25 km/h → small discount increase (10–15%)
+- 25–35 km/h → medium discount (15–25%)
+- >35 km/h → high discount (25–30%)
+
+3. TEMPERATURE:
+- 20–27°C → no discount
+- 27–32°C → light discount (10–15%)
+- 32–37°C → medium discount (15–25%)
+- >37°C → high discount (25–30%)
+
+4. COMBINATION RULE:
+- If multiple bad conditions occur (rain + wind + heat):
+  ALWAYS increase discount toward maximum (up to 30%)
+
+5. GOOD WEATHER RULE:
+- If temperature 20–27°C AND wind <15 AND rain <20%:
+  → no discount or very low discount (10% max only if low demand)
 
 INPUT DATA:
 %s
 
-WEATHER: %s
-WEEKEND: %s
-HOLIDAY: %s
-""".formatted(slots, weather, isWeekend, isHoliday);
+WEATHER (hourly):
+%s
+
+WEEKEND:
+%s
+
+HOLIDAY:
+%s
+""".formatted(slots, weatherForPrompt, isWeekend, isHoliday);
 
         // ✅ GROQ REQUEST (CORRECT FORMAT)
         Map<String, Object> request = new HashMap<>();
@@ -211,7 +254,7 @@ HOLIDAY: %s
         proposalRepository.save(p);
 
         notificationService.broadcastDiscountActivated(
-                "Discount Court %d %s %s -> %f jetons"
+                "Discount Court %d %s %s -> %.2f jetons"
                         .formatted(
                                 p.getCourt().getNumber(),
                                 p.getDate(),

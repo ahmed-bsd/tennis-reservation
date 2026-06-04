@@ -12,6 +12,4 @@ public class ReservationRequest {
     @NotNull private LocalDate date;
     @NotNull private LocalTime startTime;
     @NotNull private Integer durationMinutes;
-
-
 }

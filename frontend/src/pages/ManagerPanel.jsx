@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
-import { getPendingProposals, approveProposal, rejectProposal } from '../api/pricing'
+import {
+  getPendingProposals,
+  approveProposal,
+  rejectProposal,
+  generateProposals
+} from '../api/pricing'
+
 import { topup } from '../api/jetons'
 import { fetchUsers } from '../api/users'
 import { CheckCircle, XCircle, Coins } from 'lucide-react'
 
 export default function ManagerPanel() {
 
-  // ---------------- PROPOSALS ----------------
+  // ---------------- DATA ----------------
   const [proposals, setProposals] = useState([])
-
-  // ---------------- USERS ----------------
   const [users, setUsers] = useState([])
 
-  // ---------------- SEARCH ----------------
+  // ---------------- USER SEARCH ----------------
   const [search, setSearch] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -20,9 +24,14 @@ export default function ManagerPanel() {
   // ---------------- TOPUP ----------------
   const [topupForm, setTopupForm] = useState({ amount: '' })
   const [topupMsg, setTopupMsg] = useState('')
+
+  // ---------------- AI GENERATION ----------------
+  const [generating, setGenerating] = useState(false)
+
+  // ---------------- ERROR ----------------
   const [error, setError] = useState('')
 
-  // ---------------- LOAD DATA ----------------
+  // ---------------- LOAD ----------------
   const loadProposals = () =>
     getPendingProposals().then(r => setProposals(r.data))
 
@@ -36,13 +45,13 @@ export default function ManagerPanel() {
 
   // ---------------- FILTER USERS ----------------
   const filteredUsers =
-    search.trim() === ''
-      ? []
-      : users.filter(u =>
+    search.trim()
+      ? users.filter(u =>
           `${u.firstName} ${u.lastName}`
             .toLowerCase()
             .includes(search.toLowerCase())
         )
+      : []
 
   // ---------------- SELECT USER ----------------
   const handleSelectUser = (user) => {
@@ -51,7 +60,23 @@ export default function ManagerPanel() {
     setShowDropdown(false)
   }
 
-  // ---------------- PROPOSALS ACTIONS ----------------
+  // ---------------- GENERATE AI ----------------
+  const handleGenerate = async () => {
+    try {
+      setGenerating(true)
+      setError('')
+
+      await generateProposals()
+      await loadProposals()
+
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to generate proposals')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // ---------------- APPROVE / REJECT ----------------
   const handleApprove = async (id) => {
     try {
       await approveProposal(id)
@@ -89,6 +114,7 @@ export default function ManagerPanel() {
       setTopupForm({ amount: '' })
       setSearch('')
       setSelectedUser(null)
+
     } catch (e) {
       setError(e.response?.data?.error || 'Topup failed')
     }
@@ -108,7 +134,7 @@ export default function ManagerPanel() {
         </div>
       )}
 
-            {/* ---------------- TOPUP ---------------- */}
+      {/* ================= TOPUP ================= */}
       <div className="card">
         <h2 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
           <Coins size={18} /> Add Jetons to Member
@@ -120,18 +146,15 @@ export default function ManagerPanel() {
           </div>
         )}
 
-        {/* SEARCH USER (1 INPUT ONLY) */}
         <div className="relative mb-4">
-
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Search user
           </label>
 
           <input
-            type="text"
             className="input-field"
-            placeholder="Type name..."
             value={search}
+            placeholder="Type name..."
             onChange={(e) => {
               setSearch(e.target.value)
               setShowDropdown(true)
@@ -139,7 +162,6 @@ export default function ManagerPanel() {
             onFocus={() => setShowDropdown(true)}
           />
 
-          {/* DROPDOWN */}
           {showDropdown && filteredUsers.length > 0 && (
             <div className="absolute z-20 bg-white border w-full mt-1 rounded-lg shadow max-h-60 overflow-auto">
               {filteredUsers.map(user => (
@@ -151,33 +173,26 @@ export default function ManagerPanel() {
                   <p className="font-medium">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {user.email}
-                  </p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* SELECTED USER */}
         {selectedUser && (
           <p className="text-sm text-green-600 mb-3">
             Selected: {selectedUser.firstName} {selectedUser.lastName}
           </p>
         )}
 
-        {/* TOPUP FORM */}
         <form onSubmit={handleTopup} className="flex gap-3">
           <input
             type="number"
             className="input-field flex-1"
-            placeholder="Amount (jetons)"
-            step="5"
+            placeholder="Amount"
             value={topupForm.amount}
-            onChange={e =>
-              setTopupForm({ amount: e.target.value })
-            }
+            onChange={e => setTopupForm({ amount: e.target.value })}
             required
           />
 
@@ -187,16 +202,58 @@ export default function ManagerPanel() {
         </form>
       </div>
 
-      {/* ---------------- PROPOSALS ---------------- */}
+      {/* ================= AI GENERATION PANEL ================= */}
+      <div className="card border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-800">
+              🤖 AI Pricing Engine
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Generate intelligent discount proposals based on weather, occupancy and demand.
+            </p>
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className={`px-5 py-2 rounded-lg font-medium transition-all
+              ${generating
+                ? 'bg-indigo-300 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}
+          >
+            {generating ? 'Generating...' : 'Generate AI'}
+          </button>
+        </div>
+
+        {/* ANIMATION */}
+        {generating && (
+          <div className="mt-4 flex items-center gap-3 text-indigo-700 animate-pulse">
+            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm">
+              AI is analyzing weather, occupancy & demand...
+            </span>
+          </div>
+        )}
+
+        {/* LOADING BAR */}
+        {generating && (
+          <div className="mt-3 h-1 w-full bg-indigo-100 rounded overflow-hidden">
+            <div className="h-full bg-indigo-500 animate-[loading_2s_linear_infinite]"></div>
+          </div>
+        )}
+      </div>
+
+      {/* ================= PROPOSALS ================= */}
       <div className="card">
         <h2 className="font-semibold text-gray-700 mb-4">
           Pending Discount Proposals
         </h2>
 
         {proposals.length === 0 ? (
-          <p className="text-gray-400 text-sm">
-            No pending proposals.
-          </p>
+          <p className="text-gray-400 text-sm">No pending proposals.</p>
         ) : (
           proposals.map(p => (
             <div
@@ -208,9 +265,7 @@ export default function ManagerPanel() {
                   Court {p.court.number} — {p.date} at {p.startTime?.slice(0, 5)}
                 </p>
 
-                <p className="text-sm text-gray-500">
-                  {p.reason}
-                </p>
+                <p className="text-sm text-gray-500">{p.reason}</p>
 
                 <p className="text-sm mt-1">
                   <span className="line-through text-gray-400">
@@ -226,14 +281,14 @@ export default function ManagerPanel() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleApprove(p.id)}
-                  className="flex items-center gap-1 btn-primary text-sm px-3 py-1"
+                  className="btn-primary text-sm px-3 py-1 flex items-center gap-1"
                 >
                   <CheckCircle size={15} /> Approve
                 </button>
 
                 <button
                   onClick={() => handleReject(p.id)}
-                  className="flex items-center gap-1 btn-danger text-sm px-3 py-1"
+                  className="btn-danger text-sm px-3 py-1 flex items-center gap-1"
                 >
                   <XCircle size={15} /> Reject
                 </button>
@@ -242,7 +297,6 @@ export default function ManagerPanel() {
           ))
         )}
       </div>
-
 
     </div>
   )

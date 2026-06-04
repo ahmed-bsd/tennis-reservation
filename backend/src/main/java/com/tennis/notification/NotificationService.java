@@ -33,7 +33,7 @@ public class NotificationService {
 
         sendEmail(user.getEmail(),
                 "Booking Confirmed — Court " + reservation.getCourt().getNumber(),
-                "Your booking on %s at %s (Court %d) is confirmed. Cost: %d jetons."
+                "Your booking on %s at %s (Court %d) is confirmed. Cost: %.2f jetons."
                         .formatted(reservation.getDate(), reservation.getStartTime(),
                                 reservation.getCourt().getNumber(), reservation.getJetonCost()));
     }
@@ -45,7 +45,7 @@ public class NotificationService {
                 "jetonCost", reservation.getJetonCost()
         ));
 
-        String refundMsg = refunded ? " Your %d jetons have been refunded.".formatted(reservation.getJetonCost()) : "";
+        String refundMsg = refunded ? " Your %.2f jetons have been refunded.".formatted(reservation.getJetonCost()) : "";
         sendEmail(user.getEmail(),
                 "Booking Cancelled",
                 "Your booking on %s at %s has been cancelled.%s"

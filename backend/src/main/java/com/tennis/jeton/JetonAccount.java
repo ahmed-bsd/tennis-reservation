@@ -18,5 +18,5 @@ public class JetonAccount {
     private User user;
 
     @Column(nullable = false)
-    private double balance = 0.0;
+    private Double balance = 0.0;
 }
