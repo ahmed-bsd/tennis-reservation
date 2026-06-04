@@ -259,7 +259,7 @@ HOLIDAY:
                                 p.getCourt().getNumber(),
                                 p.getDate(),
                                 p.getStartTime(),
-                                p.getDiscountedPrice()
+                                (double) p.getDiscountedPrice()
                         )
         );
 
