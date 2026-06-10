@@ -11,7 +11,7 @@ Frontend : React
 
 Backend : Spring Boot 3, Java 21
 
-AI : LLaMA via Groq pour la génération de propositions de prix en JSON strict
+AI : LLaMA via Groq pour la génération de propositions de prix.
 
 
 
