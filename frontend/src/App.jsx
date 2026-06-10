@@ -9,7 +9,7 @@ import BookingCalendar from './pages/BookingCalendar'
 import MyReservations  from './pages/MyReservations'
 import AIChat          from './pages/AIChat'
 import ManagerPanel    from './pages/ManagerPanel'
-import AdminPanel      from './pages/AdminPanel'
+import ProposalsStats      from './pages/ProposalsStats'
 
 export default function App() {
   const { user } = useAuth()
@@ -30,7 +30,7 @@ export default function App() {
           <ProtectedRoute roles={['MANAGER','ADMIN']}><ManagerPanel /></ProtectedRoute>
         } />
         <Route path="/admin" element={
-          <ProtectedRoute roles={['ADMIN']}><AdminPanel /></ProtectedRoute>
+          <ProtectedRoute roles={['ADMIN']}><ProposalsStats /></ProtectedRoute>
         } />
 
         <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} />} />

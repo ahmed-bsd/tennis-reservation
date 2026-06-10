@@ -1,12 +1,10 @@
-# Tennis Court Reservation System
+#   Site web de réservation des terrains de tennis 
+## Technologies utilisés
+Frontend : React 18, Vite, Axios
 
+Backend : Spring Boot 3, Java 21
 
-## Tech Stack
+AI : LLaMA via Groq pour la génération de propositions de prix en JSON strict
 
- Frontend : React 18, Vite, Axios   
- Backend  : Spring Boot 3, Java 21  
- Database : MySQL 8                 
- Auth  : JWT (Spring Security)   
- AI  :  Ollama (local LLM)     
 
 

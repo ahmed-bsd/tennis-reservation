@@ -9,6 +9,7 @@ import {
 import { topup } from '../api/jetons'
 import { fetchUsers } from '../api/users'
 import { CheckCircle, XCircle, Coins } from 'lucide-react'
+import AdminPanel from './ProposalsStats'
 
 export default function ManagerPanel() {
 
@@ -262,7 +263,7 @@ export default function ManagerPanel() {
             >
               <div>
                 <p className="font-medium text-gray-800">
-                  Court {p.court.number} — {p.date} at {p.startTime?.slice(0, 5)}
+                  Discount Slot — {p.date} at {p.startTime?.slice(0, 5)}
                 </p>
 
                 <p className="text-sm text-gray-500">{p.reason}</p>
@@ -297,7 +298,6 @@ export default function ManagerPanel() {
           ))
         )}
       </div>
-
     </div>
   )
 }

@@ -17,8 +17,6 @@ public class DiscountProposal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    private Court court;
 
     @Column(nullable = false)
     private LocalDate date;

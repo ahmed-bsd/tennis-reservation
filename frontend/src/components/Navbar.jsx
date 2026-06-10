@@ -27,7 +27,7 @@ export default function Navbar() {
           <Link to="/reservations" className="hover:text-tennis-light transition-colors">My Bookings</Link>
           <Link to="/ai"           className="hover:text-tennis-light transition-colors">AI Assistant</Link>
           {isManager && <Link to="/manager" className="hover:text-tennis-light transition-colors">Manager</Link>}
-          {isAdmin    && <Link to="/admin"  className="hover:text-tennis-light transition-colors">Admin</Link>}
+          {isAdmin    && <Link to="/admin"  className="hover:text-tennis-light transition-colors">Stats</Link>}
         </div>
 
         <div className="flex items-center gap-4">
