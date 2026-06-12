@@ -23,5 +23,5 @@ AI : LLaMA via Groq pour la génération de propositions de prix.
 
 
 
-\[▶️ Voir la vidéo](assets/demo.mp4)
+https://www.loom.com/share/555a898b204c4081995496586d33c890
 
