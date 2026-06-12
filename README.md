@@ -1,12 +1,14 @@
-#   Site web de réservation des terrains de tennis 
+# Site web de réservation des terrains de tennis
 
 C'est un système intelligent de gestion et de réservation de terrains de tennis intégrant un mécanisme de tarification dynamique basé sur l’intelligence artificielle.
 
-Il permet de  *générer des propositions de réduction sur les créneaux horaires en se basant sur :
-- le taux d 'occupation des terrains
-- les conditions météorologiques
+Il permet de  \*générer des propositions de réduction sur les créneaux horaires en se basant sur :
+
+* le taux d 'occupation des terrains
+* les conditions météorologiques
 
 ## Technologies utilisés
+
 Frontend : React
 
 Backend : Spring Boot 3, Java 21
@@ -14,4 +16,12 @@ Backend : Spring Boot 3, Java 21
 AI : LLaMA via Groq pour la génération de propositions de prix.
 
 
+
+
+
+\## 🎥 Demo
+
+
+
+\[▶️ Voir la vidéo](assets/demo.mp4)
 
